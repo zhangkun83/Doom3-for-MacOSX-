@@ -133,3 +133,4 @@ If you have questions concerning this license or the applicable additional terms
 #	endif
 #endif
 
+#define ID_ALLOW_D3XP 1
