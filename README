@@ -1,3 +1,23 @@
+Update
+
+Modified to accomodate to the latest Mac OSX 10.9:
+
+1. change deprecated api CGTableCount, CGMouseDelta to work with 10.9 SDK
+2. change project file linking to new libraries using latest LLVM
+3.(optional) set window-screen mode and no expansion pack as default
+
+I only got the assets of Doom3 original version, so I change it to no expansion pack as default.
+The full-screen mode is still broken, so window-mode as default makes more sense.
+
+If you run to the console but encounter some Unknown command '-NSDocumentRevisionsDebugMode'
+errors, go to Product->Scheme->Edit Scheme, select Run doom3.app,
+unselect "Document versions: Allow debugging when using document Versions Browser"
+
+Happy hacking!
+
+squarel
+
+===================================================================
 This is a fork of fabiensanglard's Doom 3 for Mac OS X ...fork :-P
 
 It is modified to build properly under the latest Xcode and Mac OS X 10.7 SDK.
