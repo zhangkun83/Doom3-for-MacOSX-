@@ -311,8 +311,8 @@ public:
 // sikk---> Portal Sky Box
 	idEntityPtr<idEntity>	portalSkyEnt;
 	bool					portalSkyActive;
-	void					idGameLocal::SetPortalSkyEnt( idEntity *ent ) {	portalSkyEnt = ent; }
-	bool					idGameLocal::IsPortalSkyAcive( void ) { return portalSkyActive; }
+	void					SetPortalSkyEnt( idEntity *ent ) {	portalSkyEnt = ent; }
+	bool					IsPortalSkyAcive( void ) { return portalSkyActive; }
 	pvsHandle_t				GetPlayerPVS( void ) { return playerPVS; };
 // <---sikk
 
