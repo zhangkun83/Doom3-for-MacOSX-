@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -603,8 +578,16 @@ void idActor::Spawn( void ) {
 	blink_min = SEC2MS( spawnArgs.GetFloat( "blink_min", "0.5" ) );
 	blink_max = SEC2MS( spawnArgs.GetFloat( "blink_max", "8" ) );
 
+// sikk---> Player Head Type
 	// set up the head anim if necessary
-	int headAnim = headAnimator->GetAnim( "def_head" );
+	int headAnim;
+	if ( g_playerHeadType.GetBool() && spawnArgs.GetString( "def_head_custom" )[ 0 ] ) {
+		headAnim = headAnimator->GetAnim( "def_head_custom" );
+	} else {
+		headAnim = headAnimator->GetAnim( "def_head" );
+	}
+// <---sikk
+
 	if ( headAnim ) {
 		if ( headEnt ) {
             headAnimator->CycleAnim( ANIMCHANNEL_ALL, headAnim, gameLocal.time, 0 );
@@ -620,7 +603,7 @@ void idActor::Spawn( void ) {
 		}
 	}
 
-	finalBoss = spawnArgs.GetBool( "finalBoss" );
+	finalBoss = g_cyberdemonDamageType.GetBool() ? false : spawnArgs.GetBool( "finalBoss" );	// sikk - Cyberdemon Damage Type
 
 	FinishSetup();
 }
@@ -663,7 +646,14 @@ void idActor::SetupHead( void ) {
 		return;
 	}
 
-	headModel = spawnArgs.GetString( "def_head", "" );
+// sikk---> Player Head Type
+	if ( g_playerHeadType.GetBool() && spawnArgs.GetString( "def_head_custom" )[ 0 ] ) {
+		headModel = spawnArgs.GetString( "def_head_custom" );
+	} else {
+		headModel = spawnArgs.GetString( "def_head", "" );
+	}
+// <---sikk
+
 	if ( headModel[ 0 ] ) {
 		jointName = spawnArgs.GetString( "head_joint" );
 		joint = animator.GetJointHandle( jointName );
@@ -2174,7 +2164,17 @@ void idActor::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &dir
 		gameLocal.Error( "Unknown damageDef '%s'", damageDefName );
 	}
 
-	int	damage = damageDef->GetInt( "damage" ) * damageScale;
+// sikk---> Damage Type
+	int	damage;
+	if ( g_damageType.GetInteger() == 1 && damageDef->GetInt( "damage_doom_scale" ) ) {
+		damage = damageDef->GetInt( "damage_doom_scale" ) * ( gameLocal.random.RandomInt( 255 ) % damageDef->GetInt( "damage_doom_range" ) + 1 );
+	} else if ( g_damageType.GetInteger() == 2 && damageDef->GetInt( "damage_custom" ) ) {
+		damage = damageDef->GetInt( "damage_custom" );
+	} else {
+		damage = damageDef->GetInt( "damage" );
+	}
+// <---sikk
+	damage *= damageScale;
 	damage = GetDamageForLocation( damage, location );
 
 	// inform the attacker that they hit someone
@@ -2186,7 +2186,8 @@ void idActor::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &dir
 				health = -999;
 			}
 			Killed( inflictor, attacker, damage, dir, location );
-			if ( ( health < -20 ) && spawnArgs.GetBool( "gib" ) && damageDef->GetBool( "gib" ) ) {
+// sikk - Changed gib health from -20 to -health
+			if ( ( health < -spawnArgs.GetInt( "health" ) ) && spawnArgs.GetBool( "gib" ) && damageDef->GetBool( "gib" ) ) {
 				Gib( dir, damageDefName );
 			}
 		} else {
@@ -2342,19 +2343,29 @@ void idActor::SetupDamageGroups( void ) {
 		damageScale[ i ] = 1.0f;
 	}
 
+// sikk---> Doom 1/2 & custom Damage zones
 	// set the percentage on damage zones
-	arg = spawnArgs.MatchPrefix( "damage_scale ", NULL );
+	const char* scalePrefix;
+	if ( g_damageZoneType.GetInteger() == 1 )
+		scalePrefix = "damage_scale_doom ";
+	else if ( g_damageZoneType.GetInteger() == 2 )
+		scalePrefix = "damage_scale_custom ";
+	else
+		scalePrefix = "damage_scale ";
+
+	arg = spawnArgs.MatchPrefix( scalePrefix, NULL );
 	while ( arg ) {
 		scale = atof( arg->GetValue() );
 		groupname = arg->GetKey();
-		groupname.Strip( "damage_scale " );
+		groupname.Strip( scalePrefix );
 		for( i = 0; i < damageScale.Num(); i++ ) {
 			if ( damageGroups[ i ] == groupname ) {
 				damageScale[ i ] = scale;
 			}
 		}
-		arg = spawnArgs.MatchPrefix( "damage_scale ", arg );
+		arg = spawnArgs.MatchPrefix( scalePrefix, arg );
 	}
+// <---sikk
 }
 
 /*

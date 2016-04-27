@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #ifndef __GAME_ITEM_H__
 #define __GAME_ITEM_H__
@@ -69,6 +44,11 @@ public:
 	virtual void			WriteToSnapshot( idBitMsgDelta &msg ) const;
 	virtual void			ReadFromSnapshot( const idBitMsgDelta &msg );
 
+// sikk---> Item Management: Random Item Value/Manual Item Pickup
+	int						GetRandomValue( const char* invName );	// sikk - Item Management: Random Item Value
+	bool					noPickup;								// sikk - Item Management: Manual Item Pickup
+// <---sikk
+
 private:
 	idVec3					orgOrigin;
 	bool					spin;
@@ -84,6 +64,7 @@ private:
 	mutable int				inViewTime;
 	mutable int				lastCycle;
 	mutable int				lastRenderViewTime;
+
 
 	bool					UpdateRenderEntity( renderEntity_s *renderEntity, const renderView_t *renderView ) const;
 	static bool				ModelCallback( renderEntity_s *renderEntity, const renderView_t *renderView );
@@ -159,6 +140,9 @@ public:
 
 	void					Spawn( void );
 	virtual void			Think( void );
+
+	virtual bool			Collide( const trace_t &collision, const idVec3 &velocity );	// sikk - Moveable Items Collision Sound
+
 	virtual bool			Pickup( idPlayer *player );
 
 	static void				DropItems( idAnimatedEntity *ent, const char *type, idList<idEntity *> *list );
@@ -173,6 +157,8 @@ private:
 	const idDeclParticle *	smoke;
 	int						smokeTime;
 
+	int						nextSoundTime;	// sikk - Moveable Items Collision Sound
+
 	void					Gib( const idVec3 &dir, const char *damageDefName );
 
 	void					Event_DropToFloor( void );
@@ -185,6 +171,35 @@ public:
 
 	virtual bool			GiveToPlayer( idPlayer *player );
 };
+
+// sikk---> Moveable Video CD
+class idMoveableVideoCDItem : public idMoveableItem {
+public:
+	CLASS_PROTOTYPE( idMoveableVideoCDItem );
+
+	void					Spawn();
+	virtual bool			GiveToPlayer( idPlayer *player );
+};
+// <---sikk
+
+// sikk---> Moveable Powerup
+class idMoveableItemPowerup : public idMoveableItem {
+public:
+	CLASS_PROTOTYPE( idMoveableItemPowerup );
+
+							idMoveableItemPowerup();
+
+	void					Save( idSaveGame *savefile ) const;
+	void					Restore( idRestoreGame *savefile );
+
+	void					Spawn();
+	virtual bool			GiveToPlayer( idPlayer *player );
+
+private:
+	int						time;
+	int						type;
+};
+// <---sikk
 
 /*
 ===============================================================================

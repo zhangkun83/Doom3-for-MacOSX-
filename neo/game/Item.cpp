@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -72,6 +47,8 @@ idItem::idItem() {
 	orgOrigin.Zero();
 	canPickUp = true;
 	fl.networkSync = true;
+
+	noPickup = false;	// sikk - Item Management: Manual Item Pickup
 }
 
 /*
@@ -262,6 +239,19 @@ void idItem::Present( void ) {
 	}
 }
 
+// sikk---> Item Management: Random Item Value
+/*
+================
+idItem::GetRandomValue
+================
+*/
+int idItem::GetRandomValue( const char* invName ) {
+	int n = spawnArgs.GetInt( invName ) * ( 1.0f - g_itemValueFactor.GetFloat() * gameLocal.random.RandomFloat() );
+	n = ( n < 1 ) ? 1 : n;
+	return n;
+}
+// <---sikk
+
 /*
 ================
 idItem::Spawn
@@ -313,6 +303,40 @@ void idItem::Spawn( void ) {
 	lastCycle = -1;
 	itemShellHandle = -1;
 	shellMaterial = declManager->FindMaterial( "itemHighlightShell" );
+
+// sikk---> Item Management: Random Item Value
+	if ( g_itemValueFactor.GetFloat() ) {
+		// random ammo values
+		if ( spawnArgs.GetInt( "inv_ammo_shells" ) )
+			spawnArgs.SetInt( "inv_ammo_shells", GetRandomValue( "inv_ammo_shells" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_bullets" ) )
+			spawnArgs.SetInt( "inv_ammo_bullets", GetRandomValue( "inv_ammo_bullets" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_rockets" ) )
+			spawnArgs.SetInt( "inv_ammo_rockets", GetRandomValue( "inv_ammo_rockets" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_cells" ) )
+			spawnArgs.SetInt( "inv_ammo_cells", GetRandomValue( "inv_ammo_cells" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_grenades" ) )
+			spawnArgs.SetInt( "inv_ammo_grenades", GetRandomValue( "inv_ammo_grenades" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_bfg" ) )
+			spawnArgs.SetInt( "inv_ammo_bfg", GetRandomValue( "inv_ammo_bfg" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_clip" ) )
+			spawnArgs.SetInt( "inv_ammo_clip", GetRandomValue( "inv_ammo_clip" ) );
+		if ( spawnArgs.GetInt( "inv_ammo_belt" ) )
+			spawnArgs.SetInt( "inv_ammo_belt", GetRandomValue( "inv_ammo_belt" ) );
+
+		// random health values
+		if ( spawnArgs.GetInt( "inv_health" ) )
+			spawnArgs.SetInt( "inv_health", GetRandomValue( "inv_health" ) );
+
+		// random armor values
+		if ( spawnArgs.GetInt( "inv_armor" ) )
+			spawnArgs.SetInt( "inv_armor", GetRandomValue( "inv_armor" ) );
+
+		// random air values
+		if ( spawnArgs.GetInt( "inv_air" ) )
+			spawnArgs.SetInt( "inv_air", GetRandomValue( "inv_air" ) );
+	}
+// <---sikk
 }
 
 /*
@@ -341,6 +365,11 @@ bool idItem::GiveToPlayer( idPlayer *player ) {
 	if ( player == NULL ) {
 		return false;
 	}
+
+// sikk---> Item Management: Manual Item Pickup
+	if ( noPickup )
+		return false;
+// <---sikk
 
 	if ( spawnArgs.GetBool( "inv_carry" ) ) {
 		return player->GiveInventoryItem( &spawnArgs );
@@ -404,6 +433,8 @@ bool idItem::Pickup( idPlayer *player ) {
 		}
 	}
 
+	noPickup = true;	// sikk - Item Management: Manual Item Pickup
+
 	BecomeInactive( TH_THINK );
 	return true;
 }
@@ -449,7 +480,6 @@ idItem::ClientReceiveEvent
 ================
 */
 bool idItem::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
-
 	switch( event ) {
 		case EVENT_PICKUP: {
 
@@ -478,7 +508,7 @@ bool idItem::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
 			return idEntity::ClientReceiveEvent( event, time, msg );
 		}
 	}
-	return false;
+//	return false;	// sikk - warning C4702: unreachable code
 }
 
 /*
@@ -512,7 +542,10 @@ void idItem::Event_Touch( idEntity *other, trace_t *trace ) {
 		return;
 	}
 
-	Pickup( static_cast<idPlayer *>(other) );
+// sikk---> Manual Item Pickup
+	if ( !g_itemPickupType.GetBool() || spawnArgs.GetBool( "autopickup" ) )
+		Pickup( static_cast<idPlayer *>(other) );
+// <---sikk
 }
 
 /*
@@ -632,8 +665,12 @@ bool idItemPowerup::GiveToPlayer( idPlayer *player ) {
 	if ( player->spectating ) {
 		return false;
 	}
-	player->GivePowerUp( type, time * 1000 );
-	return true;
+
+// sikk---> Adrenaline Pack System
+//	player->GivePowerUp( type, time * 1000 );
+//	return true;
+	return player->GivePowerUp( type, time * 1000 );
+// <---sikk
 }
 
 /*
@@ -708,6 +745,26 @@ void idObjective::Event_CamShot( ) {
 			renderView_t fullView = *view;
 			fullView.width = SCREEN_WIDTH;
 			fullView.height = SCREEN_HEIGHT;
+
+// sikk---> Portal Sky Box
+			// HACK : always draw sky-portal view if there is one in the map, this isn't real-time
+			if ( gameLocal.portalSkyEnt.GetEntity() && g_enablePortalSky.GetBool() ) {
+				renderView_t portalView = fullView;
+				portalView.vieworg = gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetOrigin();
+
+				// setup global fixup projection vars
+				int i, w, h;
+
+				renderSystem->GetGLSettings( w, h );
+				for ( i = 1; i < w; i <<= 1 ) {}
+				fullView.shaderParms[4] = (float)w / (float)i;
+				for ( i = 1; i < h; i <<= 1 ) {}
+				fullView.shaderParms[5] = (float)h / (float)i;
+				gameRenderWorld->RenderScene( &portalView );
+				renderSystem->CaptureRenderToImage( "_currentRender" );
+			}
+// <---sikk
+
 			// draw a view to a texture
 			renderSystem->CropRenderSize( 256, 256, true );
 			gameRenderWorld->RenderScene( &fullView );
@@ -866,6 +923,8 @@ idMoveableItem::idMoveableItem() {
 	trigger = NULL;
 	smoke = NULL;
 	smokeTime = 0;
+
+	nextSoundTime = 0;	// sikk - Moveable Items Collision Sound
 }
 
 /*
@@ -891,6 +950,8 @@ void idMoveableItem::Save( idSaveGame *savefile ) const {
 
 	savefile->WriteParticle( smoke );
 	savefile->WriteInt( smokeTime );
+
+	savefile->WriteInt( nextSoundTime );	// sikk - Moveable Items Collision Sound
 }
 
 /*
@@ -906,6 +967,8 @@ void idMoveableItem::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadParticle( smoke );
 	savefile->ReadInt( smokeTime );
+
+	savefile->ReadInt( nextSoundTime );	// sikk - Moveable Items Collision Sound
 }
 
 /*
@@ -920,7 +983,7 @@ void idMoveableItem::Spawn( void ) {
 	idBounds bounds;
 
 	// create a trigger for item pickup
-	spawnArgs.GetFloat( "triggersize", "16.0", tsize );
+	spawnArgs.GetFloat( "triggersize", "24.0", tsize );	// sikk - Increased default triggersize from 16 to 24
 	trigger = new idClipModel( idTraceModel( idBounds( vec3_origin ).Expand( tsize ) ) );
 	trigger->Link( gameLocal.clip, this, 0, GetPhysics()->GetOrigin(), GetPhysics()->GetAxis() );
 	trigger->SetContents( CONTENTS_TRIGGER );
@@ -950,20 +1013,33 @@ void idMoveableItem::Spawn( void ) {
 	spawnArgs.GetFloat( "bouncyness", "0.6", bouncyness );
 	bouncyness = idMath::ClampFloat( 0.0f, 1.0f, bouncyness );
 
+// sikk---> Temp Fix for moveable items that spawn inside geometry
+	idVec3 offset = idVec3( 0.0f, 0.0f, 0.0f );
+	if ( !idStr::Icmp( spawnArgs.GetString( "bind" ), "" ) )
+		offset = idVec3( 0.0f, 0.0f, 4.0f );
+// <---sikk
+
 	// setup the physics
 	physicsObj.SetSelf( this );
 	physicsObj.SetClipModel( new idClipModel( trm ), density );
-	physicsObj.SetOrigin( GetPhysics()->GetOrigin() );
+	physicsObj.SetOrigin( GetPhysics()->GetOrigin() + offset );	// sikk - Temp Fix for moveable items that spawn inside geometry
 	physicsObj.SetAxis( GetPhysics()->GetAxis() );
 	physicsObj.SetBouncyness( bouncyness );
 	physicsObj.SetFriction( 0.6f, 0.6f, friction );
 	physicsObj.SetGravity( gameLocal.GetGravity() );
-	physicsObj.SetContents( CONTENTS_RENDERMODEL );
-	physicsObj.SetClipMask( MASK_SOLID | CONTENTS_MOVEABLECLIP );
+// sikk---> We want moveable items to clip with other items and we also want ragdolls to clip with items 
+	//physicsObj.SetContents( CONTENTS_RENDERMODEL );
+	//physicsObj.SetClipMask( MASK_SOLID | CONTENTS_MOVEABLECLIP );
+	physicsObj.SetContents( CONTENTS_RENDERMODEL | CONTENTS_CORPSE );
+	physicsObj.SetClipMask( MASK_SOLID | CONTENTS_CORPSE | CONTENTS_MOVEABLECLIP | CONTENTS_RENDERMODEL );
+// <---sikk
 	SetPhysics( &physicsObj );
 
 	smoke = NULL;
 	smokeTime = 0;
+
+	nextSoundTime = 0;	// sikk - Moveable Items Collision Sound
+
 	const char *smokeName = spawnArgs.GetString( "smoke_trail" );
 	if ( *smokeName != '\0' ) {
 		smoke = static_cast<const idDeclParticle *>( declManager->FindType( DECL_PARTICLE, smokeName ) );
@@ -995,6 +1071,30 @@ void idMoveableItem::Think( void ) {
 
 	Present();
 }
+
+// sikk---> Moveable Items Collision Sound
+/*
+=================
+idMoveableItem::Collide
+=================
+*/
+bool idMoveableItem::Collide( const trace_t &collision, const idVec3 &velocity ) {
+	float v, f;
+
+	v = -( velocity * collision.c.normal );
+	if ( v > 80 && gameLocal.time > nextSoundTime ) {
+		f = v > 200 ? 1.0f : idMath::Sqrt( v - 80 ) * 0.091f;
+		if ( StartSound( "snd_bounce", SND_CHANNEL_ANY, 0, false, NULL ) ) {
+			// don't set the volume unless there is a bounce sound as it overrides the entire channel
+			// which causes footsteps on ai's to not honor their shader parms
+			SetSoundVolume( f );
+		}
+		nextSoundTime = gameLocal.time + 500;
+	}
+
+	return false;
+}
+// <---sikk
 
 /*
 ================
@@ -1042,7 +1142,7 @@ idEntity *idMoveableItem::DropItem( const char *classname, const idVec3 &origin,
 			removeDelay = 5 * 60 * 1000;
 		}
 		// always remove a dropped item after 5 minutes in case it dropped to an unreachable location
-		item->PostEventMS( &EV_Remove, removeDelay );
+//		item->PostEventMS( &EV_Remove, removeDelay );	// sikk - Dropped moveable items are no longer removed
 	}
 	return item;
 }
@@ -1201,6 +1301,116 @@ bool idMoveablePDAItem::GiveToPlayer(idPlayer *player) {
 	}
 	return true;
 }
+
+// sikk---> Moveable Video CD
+/*
+===============================================================================
+
+  idMoveableVideoCDItem
+
+===============================================================================
+*/
+
+CLASS_DECLARATION( idMoveableItem, idMoveableVideoCDItem )
+END_CLASS
+
+/*
+================
+idMoveableVideoCDItem::Spawn
+================
+*/
+void idMoveableVideoCDItem::Spawn( void ) {
+}
+
+/*
+================
+idMoveableVideoCDItem::GiveToPlayer
+================
+*/
+bool idMoveableVideoCDItem::GiveToPlayer( idPlayer *player ) {
+	idStr str = spawnArgs.GetString( "video" );
+	if ( player && str.Length() ) {
+		player->GiveVideo( str, &spawnArgs );
+	}
+	return true;
+}
+// <---sikk
+
+// sikk---> Moveable Powerup
+/*
+===============================================================================
+
+  idMoveableItemPowerup
+
+===============================================================================
+*/
+
+/*
+===============
+idMoveableItemPowerup
+===============
+*/
+
+CLASS_DECLARATION( idMoveableItem, idMoveableItemPowerup )
+END_CLASS
+
+/*
+================
+idMoveableItemPowerup::idMoveableItemPowerup
+================
+*/
+idMoveableItemPowerup::idMoveableItemPowerup() {
+	time = 0;
+	type = 0;
+}
+
+/*
+================
+idMoveableItemPowerup::Save
+================
+*/
+void idMoveableItemPowerup::Save( idSaveGame *savefile ) const {
+	savefile->WriteInt( time );
+	savefile->WriteInt( type );
+}
+
+/*
+================
+idMoveableItemPowerup::Restore
+================
+*/
+void idMoveableItemPowerup::Restore( idRestoreGame *savefile ) {
+	savefile->ReadInt( time );
+	savefile->ReadInt( type );
+}
+
+/*
+================
+idMoveableItemPowerup::Spawn
+================
+*/
+void idMoveableItemPowerup::Spawn( void ) {
+	time = spawnArgs.GetInt( "time", "30" );
+	type = spawnArgs.GetInt( "type", "0" );
+}
+
+/*
+================
+idMoveableItemPowerup::GiveToPlayer
+================
+*/
+bool idMoveableItemPowerup::GiveToPlayer( idPlayer *player ) {
+	if ( player->spectating ) {
+		return false;
+	}
+
+// sikk---> Adrenaline Pack System
+//	player->GivePowerUp( type, time * 1000 );
+//	return true;
+	return player->GivePowerUp( type, time * 1000 );
+// <---sikk
+}
+// <---sikk
 
 /*
 ===============================================================================

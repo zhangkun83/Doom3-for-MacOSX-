@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #ifndef __GAME_PLAYER_H__
 #define __GAME_PLAYER_H__
@@ -182,6 +157,9 @@ public:
 	int						onePickupTime;
 	idList<idItemInfo>		pickupItemNames;
 	idList<idObjectiveInfo>	objectiveNames;
+
+	int						healthPackAmount;	// sikk - Health Management System (Health Pack)
+	int						adrenalineAmount;	// sikk - Adrenaline Pack System
 };
 
 typedef struct {
@@ -271,7 +249,6 @@ public:
 	bool					healthPulse;
 	bool					healthTake;
 	int						nextHealthTake;
-
 
 	bool					hiddenWeapon;		// if the weapon is hidden ( in noWeapons maps )
 	idEntityPtr<idProjectile> soulCubeProjectile;
@@ -512,6 +489,87 @@ public:
 	bool					SelfSmooth( void );
 	void					SetSelfSmooth( bool b );
 
+	int						nScreenFrostAlpha;	// sikk - Screen Frost
+
+	int						nShowHudTimer;		// sikk - Dynamic hud system - Used to say when to show the hud as well as fade it in/out (just for health/armor/ammo/weapon changes)
+
+// sikk---> Manual Item Pickup
+	idItem*					focusItem;
+	int						itemPickupTime;
+// <---sikk
+
+// sikk---> Searchable Corpses
+	void					SearchCorpse( idAFEntity_Gibbable* corpse );
+	idAFEntity_Gibbable*	focusCorpse;
+	int						searchTimer;
+// <---sikk
+
+// sikk---> Object Manipulation
+	idGrabEntity			grabEntity;
+	idEntity*				focusMoveable;
+	int						focusMoveableId;
+	int						focusMoveableTimer;
+// <---sikk
+
+// sikk---> Adrenaline Pack System
+	void					UseAdrenaline( void );
+	int						adrenalineAmount;
+// <---sikk
+
+// sikk---> Health Management System
+	void					UseHealthPack( void );
+	int						healthPackAmount;
+	int						healthPackTimer;
+	int						nextHealthRegen;
+	int						prevHeatlh;			// sikk - holds player health after Health station has been used
+// <---sikk
+
+// sikk---> Crosshair Positioning
+	int						GetCurrentWeapon( void ) { return currentWeapon; };
+	idVec3					v3CrosshairPos;
+// <---sikk
+
+// sikk---> Weapon Management: Awareness
+	bool					GetWeaponAwareness( void );
+	bool					bWATrace;
+	bool					bWAIsSprinting;
+	bool					bWAUseHideDist;
+	float					fSpreadModifier;
+	idEntity*				entChainsawed;
+// <---sikk
+
+// sikk---> Depth Render
+	void					ToggleSuppression( bool bSuppress );
+	bool					bViewModelsModified;
+// <---sikk
+
+// sikk---> Depth of Field PostProcess
+	int						GetTalkCursor( void ) { return talkCursor; };	// used to check if character has focus
+	bool					bIsZoomed;
+	float					focusDistance;
+// <---sikk
+
+// sikk---> Global Ambient Light
+	void					ToggleAmbientLight( bool bOn );
+	bool					bAmbientLightOn;
+	idStr					szAmbientLightColor;
+	idStr					szAmbientLightRadius;
+// <---sikk
+
+// sikk---> Infrared Goggles/Headlight Mod
+	void					UpdateBattery( void );
+	void					ToggleIRGoggles( void );
+	void					ToggleHeadlight( void );
+
+	bool					bIRGogglesOn;
+	bool					bHeadlightOn;
+	int						nIRGogglesTime;
+	int						nHeadlightTime;
+	int						nBattery;
+	float					fIntensity;
+	float					fIRBloomParms[ 7 ];
+// <---sikk
+
 private:
 	jointHandle_t			hipJoint;
 	jointHandle_t			chestJoint;
@@ -663,7 +721,7 @@ private:
 	void					ExtractEmailInfo( const idStr &email, const char *scan, idStr &out );
 	void					UpdateObjectiveInfo( void );
 
-	void					UseVehicle( void );
+	void					UseVehicle( bool drive );	// sikk - function modified to support use function
 
 	void					Event_GetButtons( void );
 	void					Event_GetMove( void );

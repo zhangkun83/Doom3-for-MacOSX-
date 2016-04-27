@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
  
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -236,6 +211,8 @@ void idProjectile::Create( idEntity *owner, const idVec3 &start, const idVec3 &d
 
 	damagePower = 1.0f;
 
+	renderEntity.suppressSurfaceInViewID = -8;	// sikk - Depth Render
+
 	UpdateVisuals();
 
 	state = CREATED;
@@ -360,7 +337,7 @@ void idProjectile::Launch( const idVec3 &start, const idVec3 &dir, const idVec3 
 	}
 
 	// don't do tracers on client, we don't know origin and direction
-	if ( spawnArgs.GetBool( "tracers" ) && gameLocal.random.RandomFloat() > 0.5f ) {
+	if ( spawnArgs.GetBool( "tracers" ) && ( ( gameLocal.random.RandomFloat() * 0.99999f ) < g_tracerFrequency.GetFloat() ) ) {	// sikk - Tracer Frequency
 		SetModel( spawnArgs.GetString( "model_tracer" ) );
 		projectileFlags.isTracer = true;
 	}
@@ -579,6 +556,14 @@ bool idProjectile::Collide( const trace_t &collision, const idVec3 &velocity ) {
 				idPlayer *player = static_cast<idPlayer *>( owner.GetEntity() );
 				player->AddProjectileHits( 1 );
 				damageScale *= player->PowerUpModifier( PROJECTILE_DAMAGE );
+
+// sikk---> Blood Spray Screen Effect
+				if ( g_showBloodSpray.GetBool() ) {
+					idVec3 vLength = player->GetEyePosition() - ent->GetPhysics()->GetOrigin();
+					if ( vLength.Length() <= g_bloodSprayDistance.GetFloat() && ( gameLocal.random.RandomFloat() * 0.99999f ) < g_bloodSprayFrequency.GetFloat() )
+						player->playerView.AddBloodSpray( g_bloodSprayTime.GetFloat() );
+				}
+// <---sikk
 			}
 		}
 
@@ -825,6 +810,20 @@ void idProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 		} else {
 			fxname = spawnArgs.GetString( "model_smoke" );
 		}
+
+/*		switch ( surfaceType ) {
+			case SURFTYPE_NONE:			fxname = spawnArgs.GetString( "model_smokespark" ); break;
+			case SURFTYPE_METAL:		fxname = spawnArgs.GetString( "model_impact_metal" ); break;
+			case SURFTYPE_STONE:		fxname = spawnArgs.GetString( "model_impact_stone" ); break;
+			case SURFTYPE_FLESH:		fxname = spawnArgs.GetString( "model_impact_flesh" ); break;
+			case SURFTYPE_WOOD:			fxname = spawnArgs.GetString( "model_impact_wood" ); break;
+			case SURFTYPE_CARDBOARD:	fxname = spawnArgs.GetString( "model_impact_cardboard" ); break;
+			case SURFTYPE_LIQUID:		fxname = spawnArgs.GetString( "model_impact_liquid" ); break;
+			case SURFTYPE_GLASS:		fxname = spawnArgs.GetString( "model_impact_glass" ); break;
+			case SURFTYPE_PLASTIC:		fxname = spawnArgs.GetString( "model_impact_plastic" ); break;
+			case SURFTYPE_RICOCHET:		fxname = spawnArgs.GetString( "model_ricochet" ); break;
+			default:					fxname = spawnArgs.GetString( "model_smoke" ); break;
+		}*/
 	}
 
 	if ( fxname && *fxname ) {
@@ -835,6 +834,9 @@ void idProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 		renderEntity.shaderParms[SHADERPARM_ALPHA] = 1.0f;
 		renderEntity.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
 		renderEntity.shaderParms[SHADERPARM_DIVERSITY] = gameLocal.random.CRandomFloat();
+
+		renderEntity.suppressSurfaceInViewID = -8;	// sikk - Depth Render
+
 		Show();
 		removeTime = ( removeTime > 3000 ) ? removeTime : 3000;
 	}
@@ -884,10 +886,14 @@ void idProjectile::Explode( const trace_t &collision, idEntity *ignore ) {
 			if ( removeTime < delay * 1000 ) {
 				removeTime = ( delay + 0.10 ) * 1000;
 			}
-			PostEventSec( &EV_RadiusDamage, delay, ignore );
+// sikk---> Entities hit directly by a projectile will no longer be ignored by splash damage
+//			PostEventSec( &EV_RadiusDamage, delay, ignore );
+			PostEventSec( &EV_RadiusDamage, delay, NULL );
 		} else {
-			Event_RadiusDamage( ignore );
+//			Event_RadiusDamage( ignore );
+			Event_RadiusDamage( NULL );
 		}
+// <---sikk
 	}
 
 	// spawn debris entities
@@ -1211,7 +1217,7 @@ bool idProjectile::ClientReceiveEvent( int event, int time, const idBitMsg &msg 
 			return idEntity::ClientReceiveEvent( event, time, msg );
 		}
 	}
-	return false;
+//	return false;	// sikk - warning C4702: unreachable code
 }
 
 /*

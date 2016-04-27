@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -368,6 +343,7 @@ void idWeapon::Save( idSaveGame *savefile ) const {
 	savefile->WriteBool( allowDrop );
 	savefile->WriteObject( projectileEnt );
 
+	savefile->WriteFloat( wm_hide_distance );	// sikk - Weapon Management: Awareness
 }
 
 /*
@@ -521,6 +497,8 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadBool( allowDrop );
 	savefile->ReadObject( reinterpret_cast<idClass *&>( projectileEnt ) );
+
+	savefile->ReadFloat( wm_hide_distance );	// sikk - Weapon Management: Awareness
 }
 
 /***********************************************************************
@@ -701,6 +679,8 @@ void idWeapon::Clear( void ) {
 	projectileEnt		= NULL;
 
 	isFiring			= false;
+
+	wm_hide_distance	= -15;	// sikk - Weapon Management: Awareness
 }
 
 /*
@@ -776,7 +756,17 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 
 	ammoType			= GetAmmoNumForName( weaponDef->dict.GetString( "ammoType" ) );
 	ammoRequired		= weaponDef->dict.GetInt( "ammoRequired" );
-	clipSize			= weaponDef->dict.GetInt( "clipSize" );
+
+// sikk---> Ammo Management: Ammo Clip Size Type
+	if ( g_ammoClipSizeType.GetInteger() == 1 ) {
+		clipSize = weaponDef->dict.GetInt( "clipSize_doom" );
+	} else if ( g_ammoClipSizeType.GetInteger() == 2 ) {
+		clipSize = weaponDef->dict.GetInt( "clipSize_custom" );
+	} else {
+		clipSize = weaponDef->dict.GetInt( "clipSize" );
+	}
+// <---sikk
+
 	lowAmmo				= weaponDef->dict.GetInt( "lowAmmo" );
 
 	icon				= weaponDef->dict.GetString( "icon" );
@@ -790,6 +780,8 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 
 	hideTime			= SEC2MS( weaponDef->dict.GetFloat( "hide_time", "0.3" ) );
 	hideDistance		= weaponDef->dict.GetFloat( "hide_distance", "-15" );
+
+	wm_hide_distance	= weaponDef->dict.GetFloat( "wm_hide_distance", "-15" );	// sikk - Weapon Management: Awareness
 
 	// muzzle smoke
 	smokeName = weaponDef->dict.GetString( "smoke_muzzle" );
@@ -1062,9 +1054,17 @@ void idWeapon::UpdateGUI( void ) {
 		renderEntity.gui[ 0 ]->SetStateString( "player_ammo", "" );
 	} else {
 		// show remaining ammo
-		renderEntity.gui[ 0 ]->SetStateString( "player_totalammo", va( "%i", ammoamount - inclip) );
-		renderEntity.gui[ 0 ]->SetStateString( "player_ammo", ClipSize() ? va( "%i", inclip ) : "--" );
-		renderEntity.gui[ 0 ]->SetStateString( "player_clips", ClipSize() ? va("%i", ammoamount / ClipSize()) : "--" );
+// sikk---> Ammo Management: Ammo Clip Size Type
+		if ( g_ammoClipSizeType.GetInteger() == 1 ) {
+			renderEntity.gui[ 0 ]->SetStateString( "player_totalammo", ClipSize() ? va( "%i", ammoamount - inclip ) : va( "%i", ammoamount ) );
+			renderEntity.gui[ 0 ]->SetStateString( "player_ammo", ClipSize() ? va( "%i", inclip ) : "" );
+			renderEntity.gui[ 0 ]->SetStateString( "player_clips", ClipSize() ? va("%i", ammoamount / ClipSize()) : "" );
+		} else {
+			renderEntity.gui[ 0 ]->SetStateString( "player_totalammo", va( "%i", ammoamount - inclip ) );
+			renderEntity.gui[ 0 ]->SetStateString( "player_ammo", ClipSize() ? va( "%i", inclip ) : "--" );
+			renderEntity.gui[ 0 ]->SetStateString( "player_clips", ClipSize() ? va("%i", ammoamount / ClipSize()) : "--" );
+		}
+// <---sikk
 		renderEntity.gui[ 0 ]->SetStateString( "player_allammo", va( "%i/%i", inclip, ammoamount - inclip ) );
 	}
 	renderEntity.gui[ 0 ]->SetStateBool( "player_ammo_empty", ( ammoamount == 0 ) );
@@ -1283,7 +1283,7 @@ idWeapon::LowerWeapon
 void idWeapon::LowerWeapon( void ) {
 	if ( !hide ) {
 		hideStart	= 0.0f;
-		hideEnd		= hideDistance;
+		hideEnd		= owner->bWAUseHideDist ? wm_hide_distance : hideDistance;	// sikk - Weapon Management: Awareness
 		if ( gameLocal.time - hideStartTime < hideTime ) {
 			hideStartTime = gameLocal.time - ( hideTime - ( gameLocal.time - hideStartTime ) );
 		} else {
@@ -1302,7 +1302,7 @@ void idWeapon::RaiseWeapon( void ) {
 	Show();
 
 	if ( hide ) {
-		hideStart	= hideDistance;
+		hideStart	= owner->bWAUseHideDist ? wm_hide_distance : hideDistance;	// sikk - Weapon Management: Awareness
 		hideEnd		= 0.0f;
 		if ( gameLocal.time - hideStartTime < hideTime ) {
 			hideStartTime = gameLocal.time - ( hideTime - ( gameLocal.time - hideStartTime ) );
@@ -2197,6 +2197,12 @@ idWeapon::AmmoInClip
 ================
 */
 int idWeapon::AmmoInClip( void ) const {
+// sikk---> Ammo Management: Ammo Clip Size Type
+	if ( !clipSize ) {
+		return AmmoAvailable();
+	}
+// <---sikk
+
 	return ammoClip;
 }
 
@@ -2325,7 +2331,7 @@ bool idWeapon::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
 			return idEntity::ClientReceiveEvent( event, time, msg );
 		}
 	}
-	return false;
+//	return false;	// sikk - warning C4702: unreachable code
 }
 
 /***********************************************************************
@@ -2857,7 +2863,7 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 	}
 
 	// calculate the muzzle position
-	if ( barrelJointView != INVALID_JOINT && projectileDict.GetBool( "launchFromBarrel" ) ) {
+	if ( barrelJointView != INVALID_JOINT && ( projectileDict.GetBool( "launchFromBarrel" ) || g_weaponProjectileOrigin.GetBool() ) ) {	// sikk - Weapon Management: Projectile Origin
 		// there is an explicit joint for the muzzle
 		GetGlobalJointTransform( true, barrelJointView, muzzleOrigin, muzzleAxis );
 	} else {
@@ -2875,8 +2881,20 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 		kick_endtime = gameLocal.realClientTime + muzzle_kick_maxtime;
 	}
 
-	if ( gameLocal.isClient ) {
+// sikk---> Weapon Management: Handling/Awareness
+	if ( ( g_weaponHandlingType.GetInteger() == 1 || g_weaponHandlingType.GetInteger() == 3 ) && owner->GetCurrentWeapon() != 2 ) {
+		spread = ( spread + 2.0f ) * owner->fSpreadModifier;
 
+		owner->fSpreadModifier += 0.25f;
+		if ( owner->fSpreadModifier > 2.0f )
+			owner->fSpreadModifier = 2.0f;
+	}
+	
+	if ( g_weaponAwareness.GetBool() && owner->bIsZoomed )
+		spread *= 0.5f;
+// <---sikk
+
+	if ( gameLocal.isClient ) {
 		// predict instant hit projectiles
 		if ( projectileDict.GetBool( "net_instanthit" ) ) {
 			float spreadRad = DEG2RAD( spread );
@@ -2892,9 +2910,7 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 				}
 			}
 		}
-
 	} else {
-
 		ownerBounds = owner->GetPhysics()->GetAbsBounds();
 
 		owner->AddProjectilesFired( num_projectiles );
@@ -2905,6 +2921,12 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 			spin = (float)DEG2RAD( 360.0f ) * gameLocal.random.RandomFloat();
 			dir = playerViewAxis[ 0 ] + playerViewAxis[ 2 ] * ( ang * idMath::Sin( spin ) ) - playerViewAxis[ 1 ] * ( ang * idMath::Cos( spin ) );
 			dir.Normalize();
+
+// sikk---> Weapon Management: Handling
+			if ( g_weaponHandlingType.GetInteger() > 1 && !( g_weaponAwareness.GetBool() && owner->bIsZoomed ) ) {
+				owner->SetViewAngles( owner->viewAngles + idAngles( -0.5f * owner->fSpreadModifier, 0.0f, 0.0f ) );
+			}
+// <---sikk
 
 			if ( projectileEnt ) {
 				ent = projectileEnt;
@@ -2994,7 +3016,6 @@ void idWeapon::Event_Melee( void ) {
 		const char *hitSound = meleeDef->dict.GetString( "snd_miss" );
 
 		if ( ent ) {
-
 			float push = meleeDef->dict.GetFloat( "push" );
 			idVec3 impulse = -push * owner->PowerUpModifier( SPEED ) * tr.c.normal;
 
@@ -3021,18 +3042,34 @@ void idWeapon::Event_Melee( void ) {
 				globalKickDir = muzzleAxis * kickDir;
 				ent->Damage( owner, owner, globalKickDir, meleeDefName, owner->PowerUpModifier( MELEE_DAMAGE ), tr.c.id );
 				hit = true;
+
+// sikk---> Chainsaw View Sticking
+				if ( ent->IsType( idAI::Type ) && !idStr::Icmp( weaponDef->GetName(), "weapon_chainsaw" ) ) {
+					idVec3 playerOrigin;
+					idMat3 playerAxis;
+					idVec3 targetVec = ent->GetPhysics()->GetAbsBounds().GetCenter();
+					owner->GetViewPos( playerOrigin, playerAxis );
+					targetVec = ent->GetPhysics()->GetAbsBounds().GetCenter() - playerOrigin;
+					targetVec[2] *= 0.5f;
+					targetVec.Normalize();
+					idAngles delta = targetVec.ToAngles() - owner->cmdAngles - owner->GetDeltaViewAngles();
+					delta.Normalize180();
+					float fade = 1.0f - idMath::Fabs( playerAxis[ 0 ].z );
+
+					// move the view towards the monster
+					owner->SetDeltaViewAngles( owner->GetDeltaViewAngles() + delta * fade );
+
+					// push the player towards the monster
+					owner->ApplyImpulse( ent, 0, playerOrigin, playerAxis[ 0 ] * 20000.0f );
+				}
+// <---sikk
 			}
 
 			if ( weaponDef->dict.GetBool( "impact_damage_effect" ) ) {
-
 				if ( ent->spawnArgs.GetBool( "bleed" ) ) {
-
 					hitSound = meleeDef->dict.GetString( owner->PowerUpActive( BERSERK ) ? "snd_hit_berserk" : "snd_hit" );
-
 					ent->AddDamageEffect( tr, impulse, meleeDef->dict.GetString( "classname" ) );
-
 				} else {
-
 					int type = tr.c.material->GetSurfaceType();
 					if ( type == SURFTYPE_NONE ) {
 						type = GetDefaultSurfaceType();
@@ -3072,6 +3109,14 @@ void idWeapon::Event_Melee( void ) {
 
 		idThread::ReturnInt( hit );
 		owner->WeaponFireFeedback( &weaponDef->dict );
+
+// sikk---> Blood Spray Screen Effect
+		if ( g_showBloodSpray.GetBool() ) {
+			if ( GetOwner()->GetCurrentWeapon() == 10 && ( gameLocal.random.RandomFloat() * 0.99999f ) < g_bloodSprayFrequency.GetFloat() && hit )
+				GetOwner()->playerView.AddBloodSpray( g_bloodSprayTime.GetFloat() );
+		}
+// <---sikk
+
 		return;
 	}
 

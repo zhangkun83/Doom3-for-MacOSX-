@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
@@ -380,6 +355,11 @@ idAI::idAI() {
 	eyeFocusRate		= 0.0f;
 	headFocusRate		= 0.0f;
 	focusAlignTime		= 0;
+
+// sikk---> Random Encounters System
+	dormantTime			= 0;
+	isRandom			= false;
+// <---sikk
 }
 
 /*
@@ -527,6 +507,8 @@ void idAI::Save( idSaveGame *savefile ) const {
 	savefile->WriteJoint( flyTiltJoint );
 
 	savefile->WriteBool( GetPhysics() == static_cast<const idPhysics *>(&physicsObj) );
+
+	savefile->WriteBool( isRandom );	// sikk - Random Encounters System
 }
 
 /*
@@ -676,6 +658,8 @@ void idAI::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadBool( restorePhysics );
 
+	savefile->ReadBool( isRandom );	// sikk - Random Encounters System
+
 	// Set the AAS if the character has the correct gravity vector
 	idVec3 gravity = spawnArgs.GetVector( "gravityDir", "0 0 -1" );
 	gravity *= g_gravity.GetFloat();
@@ -714,6 +698,8 @@ void idAI::Spawn( void ) {
 		PostEventMS( &EV_Remove, 0 );
 		return;
 	}
+
+	spawnArgs.GetBool( "isRandom", "0", isRandom );	// sikk - Random Encounters System
 
 	spawnArgs.GetInt(	"team",					"1",		team );
 	spawnArgs.GetInt(	"rank",					"0",		rank );
@@ -911,6 +897,20 @@ void idAI::Spawn( void ) {
 		StartSound( "snd_ambient", SND_CHANNEL_AMBIENT, 0, false, NULL );
 	}
 
+// sikk - Monster Burn Away Delay (this doesn't effect zombies or other non-burning monsters)
+	if ( g_burnAwayDelay.GetFloat() > 0.0 && spawnArgs.GetFloat( "burnaway" ) > 0.0 )
+		spawnArgs.SetFloat( "burnaway", g_burnAwayDelay.GetFloat() );
+// <---sikk
+
+// sikk---> Enemy Health Management (also modifies friendlies but that doesn't matter)
+	health *= g_enemyHealthScale.GetFloat();
+
+	if ( g_enemyHealthRandom.GetBool() )
+		health += health * 0.5f * gameLocal.random.CRandomFloat();
+
+	health = ( health <= 0 ) ? 1 : health;
+// <---sikk
+
 	if ( health <= 0 ) {
 		gameLocal.Warning( "entity '%s' doesn't have health set", name.c_str() );
 		health = 1;
@@ -1014,6 +1014,12 @@ void idAI::DormantBegin( void ) {
 		// remove ourselves from the enemy's enemylist
 		enemyNode.Remove();
 	}
+
+// sikk---> Random Encounters System
+	if ( isRandom )
+		dormantTime = gameLocal.time;
+// <---sikk
+
 	idActor::DormantBegin();
 }
 
@@ -1035,6 +1041,11 @@ void idAI::DormantEnd( void ) {
 			particles[i].time = gameLocal.time;
 		}
 	}
+
+// sikk---> Random Encounters System
+	if ( spawnArgs.GetInt( "isRandom" ) )
+		dormantTime = 0;
+// <---sikk
 
 	idActor::DormantEnd();
 }
@@ -1149,6 +1160,11 @@ void idAI::Think( void ) {
 	Present();
 	UpdateDamageEffects();
 	LinkCombat();
+
+// sikk---> Random Encounters System
+	if ( isRandom && ( AI_DEST_UNREACHABLE || ( dormantTime && gameLocal.time > ( dormantTime + g_randomEncountersDormantTime.GetInteger() * 1000 ) ) ) ) 
+		Damage( gameLocal.world, gameLocal.world, idVec3( 0, 0, 1 ), "damage_moverCrush", 999999, INVALID_JOINT );
+// <---sikk
 }
 
 /***********************************************************************
@@ -3195,7 +3211,7 @@ int idAI::ReactionTo( const idEntity *ent ) {
 	}
 
 	// monsters will fight when attacked by lower ranked monsters.  rank 0 never fights back.
-	if ( rank && ( actor->rank < rank ) ) {
+	if ( rank && ( actor->rank < rank + g_interRankAggression.GetInteger() ) ) {	// sikk - Inter Rank Aggression
 		return ATTACK_ON_DAMAGE;
 	}
 
@@ -3333,6 +3349,18 @@ void idAI::Killed( idEntity *inflictor, idEntity *attacker, int damage, const id
 		AI_DAMAGE = true;
 		return;
 	}
+
+// sikk---> Random Encounters System
+	int i = gameLocal.GetEnemyNumFromName( spawnArgs.GetString( "classname" ) );
+	if ( i ) {
+		if ( isRandom ) {
+			gameLocal.randomEnemyTally--;
+			gameLocal.randomEnemyTally = ( gameLocal.randomEnemyTally < 0 ) ? 0 : gameLocal.randomEnemyTally;
+		} else {
+			gameLocal.randomEnemyList.Append( i );
+		}
+	}
+// <---sikk
 
 	// stop all voice sounds
 	StopSound( SND_CHANNEL_VOICE, false );
@@ -3663,7 +3691,7 @@ void idAI::SetEnemyPosition( void ) {
 	idActor		*enemyEnt = enemy.GetEntity();
 	int			enemyAreaNum;
 	int			areaNum;
-	int			lastVisibleReachableEnemyAreaNum;
+	int			lastVisibleReachableEnemyAreaNum = 0;	// sikk - warning C4701: potentially uninitialized local variable used
 	aasPath_t	path;
 	idVec3		pos;
 	bool		onGround;
@@ -4110,8 +4138,35 @@ idProjectile *idAI::LaunchProjectile( const char *jointname, idEntity *target, b
 
 	attack_accuracy = spawnArgs.GetFloat( "attack_accuracy", "7" );
 	attack_cone = spawnArgs.GetFloat( "attack_cone", "70" );
-	projectile_spread = spawnArgs.GetFloat( "projectile_spread", "0" );
-	num_projectiles = spawnArgs.GetInt( "num_projectiles", "1" );
+
+// sikk---> Damage Type/Spread
+	if ( g_damageType.GetInteger() == 1 ) {
+		if ( spawnArgs.GetFloat( "projectile_spread_doom", "-1.0" ) != -1.0 )
+			projectile_spread = spawnArgs.GetFloat( "projectile_spread_doom", "0" );
+		else
+			projectile_spread = spawnArgs.GetFloat( "projectile_spread", "0" );
+
+		if ( spawnArgs.GetInt( "num_projectiles_doom" ) )
+			num_projectiles = spawnArgs.GetInt( "num_projectiles_doom", "1" );
+		else
+			num_projectiles = spawnArgs.GetInt( "num_projectiles", "1" );
+
+	} else if ( g_damageType.GetInteger() == 2 ) {
+		if ( spawnArgs.GetFloat( "projectile_spread_custom", "-1.0" ) != -1.0 )
+			projectile_spread = spawnArgs.GetFloat( "projectile_spread_custom", "0" );
+		else
+			projectile_spread = spawnArgs.GetFloat( "projectile_spread", "0" );
+
+		if ( spawnArgs.GetInt( "num_projectiles_custom" ) )
+			num_projectiles = spawnArgs.GetInt( "num_projectiles_custom", "1" );
+		else
+			num_projectiles = spawnArgs.GetInt( "num_projectiles", "1" );
+
+	} else {
+		projectile_spread = spawnArgs.GetFloat( "projectile_spread", "0" );
+		num_projectiles = spawnArgs.GetInt( "num_projectiles", "1" );
+	}
+// <---sikk
 
 	GetMuzzle( jointname, muzzle, axis );
 
