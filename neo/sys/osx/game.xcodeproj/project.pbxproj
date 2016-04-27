@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6675920B1CD118CD00149EE3 /* Grab.h in Headers */ = {isa = PBXBuildFile; fileRef = 667592071CD118CD00149EE3 /* Grab.h */; };
+		6675920C1CD118CD00149EE3 /* Grab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 667592081CD118CD00149EE3 /* Grab.cpp */; };
+		6675920D1CD118CD00149EE3 /* Force_Grab.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 667592091CD118CD00149EE3 /* Force_Grab.cpp */; };
+		6675920E1CD118CD00149EE3 /* Force_Grab.h in Headers */ = {isa = PBXBuildFile; fileRef = 6675920A1CD118CD00149EE3 /* Force_Grab.h */; };
 		81225A3A0912C3DB005D34B9 /* libidlib_pic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 81225A210912C3A4005D34B9 /* libidlib_pic.a */; };
 		81225AC40912C42F005D34B9 /* PlayerIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A3B0912C42F005D34B9 /* PlayerIcon.cpp */; };
 		81225AC50912C42F005D34B9 /* Actor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A3C0912C42F005D34B9 /* Actor.cpp */; };
@@ -166,6 +170,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		667592071CD118CD00149EE3 /* Grab.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Grab.h; path = ../../game/Grab.h; sourceTree = "<group>"; };
+		667592081CD118CD00149EE3 /* Grab.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Grab.cpp; path = ../../game/Grab.cpp; sourceTree = "<group>"; };
+		667592091CD118CD00149EE3 /* Force_Grab.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Force_Grab.cpp; path = ../../game/physics/Force_Grab.cpp; sourceTree = "<group>"; };
+		6675920A1CD118CD00149EE3 /* Force_Grab.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Force_Grab.h; path = ../../game/physics/Force_Grab.h; sourceTree = "<group>"; };
 		81225A1B0912C3A4005D34B9 /* idlib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = idlib.xcodeproj; sourceTree = "<group>"; };
 		81225A3B0912C42F005D34B9 /* PlayerIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PlayerIcon.cpp; path = ../../game/PlayerIcon.cpp; sourceTree = SOURCE_ROOT; };
 		81225A3C0912C42F005D34B9 /* Actor.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Actor.cpp; path = ../../game/Actor.cpp; sourceTree = SOURCE_ROOT; };
@@ -327,6 +335,10 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				667592071CD118CD00149EE3 /* Grab.h */,
+				667592081CD118CD00149EE3 /* Grab.cpp */,
+				667592091CD118CD00149EE3 /* Force_Grab.cpp */,
+				6675920A1CD118CD00149EE3 /* Force_Grab.h */,
 				81225A3B0912C42F005D34B9 /* PlayerIcon.cpp */,
 				81225A3C0912C42F005D34B9 /* Actor.cpp */,
 				81225A3D0912C42F005D34B9 /* Actor.h */,
@@ -532,6 +544,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6675920B1CD118CD00149EE3 /* Grab.h in Headers */,
 				81225AC60912C42F005D34B9 /* Actor.h in Headers */,
 				81225AC80912C42F005D34B9 /* AF.h in Headers */,
 				81225ACA0912C42F005D34B9 /* AFEntity.h in Headers */,
@@ -575,6 +588,7 @@
 				81225B1C0912C42F005D34B9 /* Physics_Monster.h in Headers */,
 				81225B1E0912C42F005D34B9 /* Physics_Parametric.h in Headers */,
 				81225B200912C42F005D34B9 /* Physics_Player.h in Headers */,
+				6675920E1CD118CD00149EE3 /* Force_Grab.h in Headers */,
 				81225B220912C42F005D34B9 /* Physics_RigidBody.h in Headers */,
 				81225B240912C42F005D34B9 /* Physics_Static.h in Headers */,
 				81225B260912C42F005D34B9 /* Physics_StaticMulti.h in Headers */,
@@ -693,6 +707,7 @@
 				81225ADC0912C42F005D34B9 /* BrittleFracture.cpp in Sources */,
 				81225ADE0912C42F005D34B9 /* Camera.cpp in Sources */,
 				81225AE00912C42F005D34B9 /* Entity.cpp in Sources */,
+				6675920C1CD118CD00149EE3 /* Grab.cpp in Sources */,
 				81225AE20912C42F005D34B9 /* Fx.cpp in Sources */,
 				81225AE50912C42F005D34B9 /* Game_local.cpp in Sources */,
 				81225AE70912C42F005D34B9 /* Game_network.cpp in Sources */,
@@ -719,6 +734,7 @@
 				81225B110912C42F005D34B9 /* Force_Spring.cpp in Sources */,
 				81225B130912C42F005D34B9 /* Physics.cpp in Sources */,
 				81225B150912C42F005D34B9 /* Physics_Actor.cpp in Sources */,
+				6675920D1CD118CD00149EE3 /* Force_Grab.cpp in Sources */,
 				81225B170912C42F005D34B9 /* Physics_AF.cpp in Sources */,
 				81225B190912C42F005D34B9 /* Physics_Base.cpp in Sources */,
 				81225B1B0912C42F005D34B9 /* Physics_Monster.cpp in Sources */,
