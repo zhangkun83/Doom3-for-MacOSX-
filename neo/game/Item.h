@@ -68,6 +68,7 @@ public:
 	// networking
 	virtual void			WriteToSnapshot( idBitMsgDelta &msg ) const;
 	virtual void			ReadFromSnapshot( const idBitMsgDelta &msg );
+	  int                     GetRandomValue( const char* invName );  // sikk - Item Management: Random Item Value
 
 private:
 	idVec3					orgOrigin;

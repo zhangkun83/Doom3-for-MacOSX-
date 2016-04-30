@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -297,6 +272,13 @@ void idLight::Restore( idRestoreGame *savefile ) {
 
 	lightDefHandle = -1;
 
+// sikk---> Soft Shadows PostProcess
+	// only put lights that cast shadows into the list
+	if ( spawnArgs.GetInt( "noshadows" ) == 0  ) {
+		gameLocal.currentLights.Append( entityNumber );
+	}
+// <---sikk
+
 	SetLightLevel();
 }
 
@@ -413,6 +395,13 @@ void idLight::Spawn( void ) {
 	}
 
 	PostEventMS( &EV_PostSpawn, 0 );
+
+// sikk---> Soft Shadows PostProcess
+	// only put lights that cast shadows into the list
+	if ( spawnArgs.GetInt( "noshadows" ) == 0  ) {
+		gameLocal.currentLights.Append( entityNumber );
+	}
+// <---sikk
 
 	UpdateVisuals();
 }
@@ -660,7 +649,7 @@ void idLight::BecomeBroken( idEntity *activator ) {
 
 	}
 
-		ActivateTargets( activator );
+	ActivateTargets( activator );
 
 	// offset the start time of the shader to sync it to the game time
 	renderEntity.shaderParms[ SHADERPARM_TIMEOFFSET ] = -MS2SEC( gameLocal.time );
@@ -1131,7 +1120,6 @@ idLight::ClientReceiveEvent
 ================
 */
 bool idLight::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
-
 	switch( event ) {
 		case EVENT_BECOMEBROKEN: {
 			BecomeBroken( NULL );
@@ -1141,5 +1129,21 @@ bool idLight::ClientReceiveEvent( int event, int time, const idBitMsg &msg ) {
 			return idEntity::ClientReceiveEvent( event, time, msg );
 		}
 	}
-	return false;
+//	return false;	// sikk - warning C4702: unreachable code
 }
+
+// sikk---> Soft Shadows PostProcess
+/*
+================
+idLight::UpdateShadowState
+================
+*/
+void idLight::UpdateShadowState( void ) {
+	// let the renderer apply it to the world
+	if ( ( lightDefHandle != -1 ) ) {
+		gameRenderWorld->UpdateLightDef( lightDefHandle, &renderLight );
+	} else {
+		lightDefHandle = gameRenderWorld->AddLightDef( &renderLight );
+	}
+}
+// <---sikk

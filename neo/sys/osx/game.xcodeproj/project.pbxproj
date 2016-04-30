@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		666CA15F1CD5210000084BAB /* GameTypeInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 666CA15E1CD5210000084BAB /* GameTypeInfo.h */; };
+		666CA1621CD5211800084BAB /* tracer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 666CA1601CD5211800084BAB /* tracer.cpp */; };
+		666CA1631CD5211800084BAB /* tracer.h in Headers */ = {isa = PBXBuildFile; fileRef = 666CA1611CD5211800084BAB /* tracer.h */; };
 		81225A3A0912C3DB005D34B9 /* libidlib_pic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 81225A210912C3A4005D34B9 /* libidlib_pic.a */; };
 		81225AC40912C42F005D34B9 /* PlayerIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A3B0912C42F005D34B9 /* PlayerIcon.cpp */; };
 		81225AC50912C42F005D34B9 /* Actor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 81225A3C0912C42F005D34B9 /* Actor.cpp */; };
@@ -166,6 +169,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		666CA15E1CD5210000084BAB /* GameTypeInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GameTypeInfo.h; path = ../../game/gamesys/GameTypeInfo.h; sourceTree = "<group>"; };
+		666CA1601CD5211800084BAB /* tracer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tracer.cpp; path = ../../game/tracer.cpp; sourceTree = "<group>"; };
+		666CA1611CD5211800084BAB /* tracer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tracer.h; path = ../../game/tracer.h; sourceTree = "<group>"; };
 		81225A1B0912C3A4005D34B9 /* idlib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = idlib.xcodeproj; sourceTree = "<group>"; };
 		81225A3B0912C42F005D34B9 /* PlayerIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PlayerIcon.cpp; path = ../../game/PlayerIcon.cpp; sourceTree = SOURCE_ROOT; };
 		81225A3C0912C42F005D34B9 /* Actor.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Actor.cpp; path = ../../game/Actor.cpp; sourceTree = SOURCE_ROOT; };
@@ -317,6 +323,9 @@
 		08FB7794FE84155DC02AAC07 /* game */ = {
 			isa = PBXGroup;
 			children = (
+				666CA1601CD5211800084BAB /* tracer.cpp */,
+				666CA1611CD5211800084BAB /* tracer.h */,
+				666CA15E1CD5210000084BAB /* GameTypeInfo.h */,
 				08FB7795FE84155DC02AAC07 /* Source */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
 				81225A1B0912C3A4005D34B9 /* idlib.xcodeproj */,
@@ -563,8 +572,10 @@
 				81225B040912C42F005D34B9 /* Mover.h in Headers */,
 				81225B060912C42F005D34B9 /* MultiplayerGame.h in Headers */,
 				81225B080912C42F005D34B9 /* Clip.h in Headers */,
+				666CA1631CD5211800084BAB /* tracer.h in Headers */,
 				81225B0A0912C42F005D34B9 /* Force.h in Headers */,
 				81225B0C0912C42F005D34B9 /* Force_Constant.h in Headers */,
+				666CA15F1CD5210000084BAB /* GameTypeInfo.h in Headers */,
 				81225B0E0912C42F005D34B9 /* Force_Drag.h in Headers */,
 				81225B100912C42F005D34B9 /* Force_Field.h in Headers */,
 				81225B120912C42F005D34B9 /* Force_Spring.h in Headers */,
@@ -686,6 +697,7 @@
 				81225AD30912C42F005D34B9 /* AI_events.cpp in Sources */,
 				81225AD40912C42F005D34B9 /* AI_pathing.cpp in Sources */,
 				81225AD50912C42F005D34B9 /* AI_Vagary.cpp in Sources */,
+				666CA1621CD5211800084BAB /* tracer.cpp in Sources */,
 				81225AD60912C42F005D34B9 /* Anim.cpp in Sources */,
 				81225AD80912C42F005D34B9 /* Anim_Blend.cpp in Sources */,
 				81225AD90912C42F005D34B9 /* Anim_Import.cpp in Sources */,
@@ -776,10 +788,18 @@
 					GAME_DLL,
 					__WITH_PB__,
 				);
+				"GCC_PREPROCESSOR_DEFINITIONS[arch=*]" = (
+					"$(MAIN_CPP_DEFINES)",
+					MACOS_X,
+					GAME_DLL,
+					_DENTONMOD,
+					_PORTALSKY,
+					__WITH_PB__,
+				);
 				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = .;
 				LIBRARY_STYLE = DYNAMIC;
 				MACH_O_TYPE = mh_dylib;
 				MAIN_CPP_DEFINES = _DEBUG;
@@ -813,6 +833,7 @@
 					__WITH_PB__,
 				);
 				GCC_VERSION = "";
+				INSTALL_PATH = .;
 				LIBRARY_STYLE = DYNAMIC;
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
