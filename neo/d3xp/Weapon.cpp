@@ -1,30 +1,5 @@
-/*
-===========================================================================
-
-Doom 3 GPL Source Code
-Copyright (C) 1999-2011 id Software LLC, a ZeniMax Media company. 
-
-This file is part of the Doom 3 GPL Source Code (?Doom 3 Source Code?).  
-
-Doom 3 Source Code is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Doom 3 Source Code is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Doom 3 Source Code.  If not, see <http://www.gnu.org/licenses/>.
-
-In addition, the Doom 3 Source Code is also subject to certain additional terms. You should have received a copy of these additional terms immediately following the terms and conditions of the GNU General Public License which accompanied the Doom 3 Source Code.  If not, please request a copy in writing from id Software at the address below.
-
-If you have questions concerning this license or the applicable additional terms, you may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville, Maryland 20850 USA.
-
-===========================================================================
-*/
+// Copyright (C) 2004 Id Software, Inc.
+//
 
 #include "../idlib/precompiled.h"
 #pragma hdrstop
@@ -434,6 +409,7 @@ void idWeapon::Save( idSaveGame *savefile ) const {
 	}
 #endif
 
+	savefile->WriteFloat( wh_hide_distance );	// sikk - Weapon Handling System
 }
 
 /*
@@ -661,6 +637,8 @@ void idWeapon::Restore( idRestoreGame *savefile ) {
 		weaponLights.Set(newLight.name, newLight);
 	}
 #endif
+
+	savefile->ReadFloat( wh_hide_distance );	// sikk - Weapon Handling System
 }
 
 /***********************************************************************
@@ -869,6 +847,8 @@ void idWeapon::Clear( void ) {
 	projectileEnt		= NULL;
 
 	isFiring			= false;
+
+	wh_hide_distance	= -15;	// sikk - Weapon Handling System
 }
 
 /*
@@ -944,7 +924,7 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 
 	ammoType			= GetAmmoNumForName( weaponDef->dict.GetString( "ammoType" ) );
 	ammoRequired		= weaponDef->dict.GetInt( "ammoRequired" );
-	clipSize			= weaponDef->dict.GetInt( "clipSize" );
+	clipSize			= g_ammoCapacityType.GetBool() ? weaponDef->dict.GetInt( "custom_clipSize" ) : weaponDef->dict.GetInt( "clipSize" );	// sikk---> Ammo Management: Ammo Capacity Type
 	lowAmmo				= weaponDef->dict.GetInt( "lowAmmo" );
 
 	icon				= weaponDef->dict.GetString( "icon" );
@@ -958,6 +938,8 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 
 	hideTime			= SEC2MS( weaponDef->dict.GetFloat( "hide_time", "0.3" ) );
 	hideDistance		= weaponDef->dict.GetFloat( "hide_distance", "-15" );
+
+	wh_hide_distance	= weaponDef->dict.GetFloat( "wh_hide_distance", "-15" );	// sikk - Weapon Handling System
 
 	// muzzle smoke
 	smokeName = weaponDef->dict.GetString( "smoke_muzzle" );
@@ -1563,7 +1545,7 @@ idWeapon::LowerWeapon
 void idWeapon::LowerWeapon( void ) {
 	if ( !hide ) {
 		hideStart	= 0.0f;
-		hideEnd		= hideDistance;
+		hideEnd		= ( owner->GetWeaponHandling() && !owner->OnLadder() ) ? wh_hide_distance : hideDistance;	// sikk - Weapon Handling System
 		if ( gameLocal.time - hideStartTime < hideTime ) {
 			hideStartTime = gameLocal.time - ( hideTime - ( gameLocal.time - hideStartTime ) );
 		} else {
@@ -2933,6 +2915,10 @@ void idWeapon::Event_AddToClip( int amount ) {
 #ifdef _D3XP
 	// for shared ammo we need to use the ammo when it is moved into the clip
 	int usedAmmo = ammoClip - oldAmmo;
+// sikk---> Ammo Usage Type
+	if ( g_ammoUsageType.GetBool() && ammoType != 1 )
+		 usedAmmo = clipSize;
+// <---sikk
 	owner->inventory.UseAmmo(ammoType, usedAmmo);
 #endif
 }
@@ -3380,14 +3366,18 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 		kick_endtime = gameLocal.realClientTime + muzzle_kick_maxtime;
 	}
 
-	if ( gameLocal.isClient ) {
+// sikk---> Zoom Spread Reduction
+	if ( g_weaponHandlingType.GetBool() )
+		spread = spawnArgs.GetFloat( "wh_spread", "0" );
+// <---sikk
 
+	if ( gameLocal.isClient ) {
 		// predict instant hit projectiles
 		if ( projectileDict.GetBool( "net_instanthit" ) ) {
 			float spreadRad = DEG2RAD( spread );
 			muzzle_pos = muzzleOrigin + playerViewAxis[ 0 ] * 2.0f;
 			for( i = 0; i < num_projectiles; i++ ) {
-				ang = idMath::Sin( spreadRad * gameLocal.random.RandomFloat() );
+				ang = idMath::Sin( spreadRad * gameLocal.random.RandomFloat() * ( ( owner->bIsZoomed && g_weaponHandlingType.GetBool() ) ? ( ( GetEntityDefName() == "weapon_shotgun" ) ? 0.5 : 0.25f ) : 1.0f ) );	// sikk - Weapon Handling System: Zoom Spread Reduction
 				spin = (float)DEG2RAD( 360.0f ) * gameLocal.random.RandomFloat();
 				dir = playerViewAxis[ 0 ] + playerViewAxis[ 2 ] * ( ang * idMath::Sin( spin ) ) - playerViewAxis[ 1 ] * ( ang * idMath::Cos( spin ) );
 				dir.Normalize();
@@ -3399,14 +3389,13 @@ void idWeapon::Event_LaunchProjectiles( int num_projectiles, float spread, float
 		}
 
 	} else {
-
 		ownerBounds = owner->GetPhysics()->GetAbsBounds();
 
 		owner->AddProjectilesFired( num_projectiles );
 
 		float spreadRad = DEG2RAD( spread );
 		for( i = 0; i < num_projectiles; i++ ) {
-			ang = idMath::Sin( spreadRad * gameLocal.random.RandomFloat() );
+			ang = idMath::Sin( spreadRad * gameLocal.random.RandomFloat() * ( ( owner->bIsZoomed && g_weaponHandlingType.GetBool() ) ? 0.25f : 1.0f ) );	// sikk - Weapon Handling System: Zoom Spread Reduction
 			spin = (float)DEG2RAD( 360.0f ) * gameLocal.random.RandomFloat();
 			dir = playerViewAxis[ 0 ] + playerViewAxis[ 2 ] * ( ang * idMath::Sin( spin ) ) - playerViewAxis[ 1 ] * ( ang * idMath::Cos( spin ) );
 			dir.Normalize();
@@ -3843,6 +3832,14 @@ void idWeapon::Event_Melee( void ) {
 
 		idThread::ReturnInt( hit );
 		owner->WeaponFireFeedback( &weaponDef->dict );
+
+// sikk---> Blood Spray Screen Effect **No Chainsaw in D3XP SP**
+//		if ( g_showBloodSpray.GetBool() ) {
+//			if ( GetOwner()->GetCurrentWeaponNum() == 10 && gameLocal.random.RandomFloat() < g_bloodSprayFrequency.GetFloat() && hit )
+//				GetOwner()->playerView.AddBloodSpray( g_bloodSprayTime.GetFloat() );
+//		}
+// <---sikk
+
 		return;
 	}
 
